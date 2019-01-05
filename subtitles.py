@@ -73,11 +73,13 @@ def test_parse():
 
 def test_shift():
     subs = parse_srt('test.srt')
-    subs = shift(subs, datetime.timedelta(seconds=3))
-
-    assert subs[4].start == datetime.timedelta(seconds=48, microseconds=512000)
-    assert subs[4].end == datetime.timedelta(seconds=50, microseconds=234000)
-
-
-if __name__ == '__main__':
-    test_parse()
+    diff = datetime.timedelta(seconds=3)
+    new_subs = shift(subs, diff)
+    # manual check
+    assert new_subs[4].start == datetime.timedelta(seconds=48, microseconds=512000)
+    assert new_subs[4].end == datetime.timedelta(seconds=50, microseconds=234000)
+    # whole checks
+    for s, ns in zip(subs, new_subs):
+        assert ns.text == s.text
+        assert ns.start == s.start + diff
+        assert ns.end == s.end + diff
