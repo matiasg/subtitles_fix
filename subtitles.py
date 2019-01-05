@@ -3,18 +3,23 @@ import datetime
 from pathlib import Path
 from collections import namedtuple
 
+from typing import List
+
 Subline = namedtuple('Subline', ['start', 'end', 'text'])
 
 
-def to_time(d):
-    return datetime.time.fromisoformat(d.replace(',', '.'))
+def to_time(d: str) -> datetime.timedelta:
+    t = datetime.time.fromisoformat(d.replace(',', '.'))
+    return datetime.timedelta(hours=t.hour,
+                              minutes=t.minute,
+                              seconds=t.second,
+                              microseconds=t.microsecond)
 
 
-def parse_srt(srtfile):
-
+def parse_srt(srtfile: str) -> List[Subline]:
     sub_number_reg = re.compile(r'^(\d+)\s*$')
     start_end_reg = re.compile(r'^(\d\d:\d\d:\d\d[,.]\d\d\d) --> (\d\d:\d\d:\d\d[,.]\d\d\d)\s*$')
-    subs = []
+    subs: List[Subline] = []
 
     lines = Path(srtfile).read_text().splitlines()
     line_number = 0
@@ -37,16 +42,41 @@ def parse_srt(srtfile):
 
         sub = Subline(start, end, text)
         subs.append(sub)
+        assert sub_number == len(subs)  # consistency check
 
         line_number = end_text_line_number + 1
 
     return subs
-        
 
 
+def shift(subs: List[Subline], diff: datetime.timedelta) -> List[Subline]:
+    newsubs = []
+    for sub in subs:
+        newsubs.append(Subline(sub.start + diff, sub.end + diff, sub.text))
+    return newsubs
+
+
+
+## tests
 def test_parse():
     subs = parse_srt('test.srt')
     assert len(subs) == 11
+    assert len(subs[0].text) == 2
+    assert len(subs[1].text) == 1
+
+    assert subs[0].text[0] == 'sub 1, line 1'
+    assert subs[0].text[1] == 'sub 1, line 2'
+
+    assert subs[4].start == datetime.timedelta(seconds=45, microseconds=512000)
+    assert subs[4].end == datetime.timedelta(seconds=47, microseconds=234000)
+
+
+def test_shift():
+    subs = parse_srt('test.srt')
+    subs = shift(subs, datetime.timedelta(seconds=3))
+
+    assert subs[4].start == datetime.timedelta(seconds=48, microseconds=512000)
+    assert subs[4].end == datetime.timedelta(seconds=50, microseconds=234000)
 
 
 if __name__ == '__main__':
