@@ -76,6 +76,12 @@ def shift(subs: Subtitles, diff: datetime.timedelta) -> Subtitles:
     return newsubs
 
 
+def shift_subline(subs: Subtitles, sub_number: int, wanted_start: datetime.timedelta) -> Subtitles:
+    sub = subs[sub_number - 1]
+    diff = wanted_start - sub.start
+    return shift(subs, diff)
+
+
 def output_srt(subs: Subtitles, srtfile: str) -> None:
     sub_num = 1
     with open(srtfile, 'w') as outfile:
