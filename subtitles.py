@@ -41,7 +41,7 @@ def parse_srt(srtfile: str) -> Subtitles:
     start_end_reg = re.compile(r'^(\d\d:\d\d:\d\d[,.]\d\d\d) --> (\d\d:\d\d:\d\d[,.]\d\d\d)\s*$')
     subs: Subtitles = []
 
-    lines = Path(srtfile).read_text().splitlines()
+    lines = Path(srtfile).read_text(encoding='latin1').splitlines()
     line_number = 0
 
     while line_number < len(lines):
@@ -84,7 +84,7 @@ def shift_subline(subs: Subtitles, sub_number: int, wanted_start: datetime.timed
 
 def output_srt(subs: Subtitles, srtfile: str) -> None:
     sub_num = 1
-    with open(srtfile, 'w') as outfile:
+    with open(srtfile, 'w', encoding='latin1') as outfile:
 
         for sub in subs:
             if sub.has_nonnegative_start():
