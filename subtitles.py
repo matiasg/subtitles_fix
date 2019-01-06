@@ -2,9 +2,9 @@ import re
 import datetime
 from pathlib import Path
 from collections import namedtuple
-from textwrap import dedent
 
 from typing import List
+
 
 class Subline(namedtuple('Subline', ['start', 'end', 'text'])):
 
@@ -12,7 +12,8 @@ class Subline(namedtuple('Subline', ['start', 'end', 'text'])):
     def format_datetime_time(t: datetime.timedelta) -> str:
         as_date = datetime.datetime(1, 1, 1) + t
         as_time = as_date.time()
-        return f'{as_time.hour:02d}:{as_time.minute:02d}:{as_time.second:02d}.{as_time.microsecond // 1000:03d}'
+        return (f'{as_time.hour:02d}:{as_time.minute:02d}:{as_time.second:02d}'
+                f'.{as_time.microsecond // 1000:03d}')
 
     def format_time(self):
         return '{} --> {}'.format(self.format_datetime_time(self.start),
@@ -24,6 +25,7 @@ class Subline(namedtuple('Subline', ['start', 'end', 'text'])):
     def __str__(self):
         timeline = self.format_time()
         return '\n'.join((timeline, *self.text))
+
 
 Subtitles = List[Subline]
 
@@ -38,7 +40,8 @@ def to_time(d: str) -> datetime.timedelta:
 
 def parse_srt(srtfile: str) -> Subtitles:
     sub_number_reg = re.compile(r'^(\d+)\s*$')
-    start_end_reg = re.compile(r'^(\d\d:\d\d:\d\d[,.]\d\d\d) --> (\d\d:\d\d:\d\d[,.]\d\d\d)\s*$')
+    start_end_reg = re.compile(r'^(\d\d:\d\d:\d\d[,.]\d\d\d)'
+                               r' --> (\d\d:\d\d:\d\d[,.]\d\d\d)\s*$')
     subs: Subtitles = []
 
     lines = Path(srtfile).read_text(encoding='latin1').splitlines()
@@ -58,7 +61,7 @@ def parse_srt(srtfile: str) -> Subtitles:
             end_text_line_number = lines.index('', line_number + 2)
         except ValueError:  # end of lines
             end_text_line_number = len(lines)
-        text = lines[line_number + 2 : end_text_line_number]
+        text = lines[line_number + 2:end_text_line_number]
 
         sub = Subline(start, end, text)
         subs.append(sub)
@@ -76,7 +79,10 @@ def shift(subs: Subtitles, diff: datetime.timedelta) -> Subtitles:
     return newsubs
 
 
-def shift_subline(subs: Subtitles, sub_number: int, wanted_start: datetime.timedelta) -> Subtitles:
+def shift_subline(subs: Subtitles,
+                  sub_number: int,
+                  wanted_start: datetime.timedelta
+                  ) -> Subtitles:
     sub = subs[sub_number - 1]
     diff = wanted_start - sub.start
     return shift(subs, diff)
@@ -94,59 +100,3 @@ def output_srt(subs: Subtitles, srtfile: str) -> None:
 
                 print(sub_num, sub, sep='\n', file=outfile)
                 sub_num += 1
-
-
-## tests
-def test_parse():
-    subs = parse_srt('test.srt')
-    assert len(subs) == 11
-    assert len(subs[0].text) == 2
-    assert len(subs[1].text) == 1
-
-    assert subs[0].text[0] == 'sub 1, line 1'
-    assert subs[0].text[1] == 'sub 1, line 2'
-
-    assert subs[4].start == datetime.timedelta(seconds=45, microseconds=512000)
-    assert subs[4].end == datetime.timedelta(seconds=47, microseconds=234000)
-
-
-def test_shift():
-    subs = parse_srt('test.srt')
-    diff = datetime.timedelta(seconds=3)
-    new_subs = shift(subs, diff)
-    # manual check
-    assert new_subs[4].start == datetime.timedelta(seconds=48, microseconds=512000)
-    assert new_subs[4].end == datetime.timedelta(seconds=50, microseconds=234000)
-    # whole checks
-    for s, ns in zip(subs, new_subs):
-        assert ns.text == s.text
-        assert ns.start == s.start + diff
-        assert ns.end == s.end + diff
-
-
-def test_output():
-    subs = parse_srt('test.srt')
-
-    import tempfile
-    with tempfile.TemporaryDirectory() as tmpdir:
-        outfile = Path(tmpdir) / 'test_output.srt'
-
-        output_srt(subs, str(outfile))
-        assert Path(outfile).exists()
-
-        new_subs = parse_srt(str(outfile))
-        assert new_subs == subs
-
-
-def test_output_with_negative_times():
-    subs = parse_srt('test.srt')
-    shifted_subs = shift(subs, datetime.timedelta(seconds=-20))
-
-    import tempfile
-    with tempfile.TemporaryDirectory() as tmpdir:
-        outfile = Path(tmpdir) / 'test_negative_time.srt'
-
-        output_srt(shifted_subs, str(outfile))
-        read_subs = parse_srt(str(outfile))
-
-        assert len(read_subs) == len(shifted_subs) - 1
