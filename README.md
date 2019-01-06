@@ -12,4 +12,8 @@ So far it only shifts subtitles. Example:
 ➜ head -n2 test.srt 
 1
 00:00:06,000 --> 00:00:12,074
+
+➜ grep -A1 '^4$' test_output.srt 
+4
+01:23:45.678 --> 01:23:48.014
 ```
