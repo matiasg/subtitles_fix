@@ -2,10 +2,28 @@ import re
 import datetime
 from pathlib import Path
 from collections import namedtuple
+from textwrap import dedent
 
 from typing import List
 
-Subline = namedtuple('Subline', ['start', 'end', 'text'])
+class Subline(namedtuple('Subline', ['start', 'end', 'text'])):
+
+    @staticmethod
+    def format_datetime_time(t: datetime.timedelta) -> str:
+        as_date = datetime.datetime(1, 1, 1) + t
+        as_time = as_date.time()
+        return f'{as_time.hour:02d}:{as_time.minute:02d}:{as_time.second:02d}.{as_time.microsecond // 1000:03d}'
+
+    def format_time(self):
+        return '{} --> {}'.format(self.format_datetime_time(self.start),
+                                  self.format_datetime_time(self.end))
+
+    def __str__(self):
+        timeline = self.format_time()
+        # textblock = '\n'.join(self.text)
+        return '\n'.join((timeline, *self.text))
+
+Subtitles = List[Subline]
 
 
 def to_time(d: str) -> datetime.timedelta:
@@ -16,10 +34,10 @@ def to_time(d: str) -> datetime.timedelta:
                               microseconds=t.microsecond)
 
 
-def parse_srt(srtfile: str) -> List[Subline]:
+def parse_srt(srtfile: str) -> Subtitles:
     sub_number_reg = re.compile(r'^(\d+)\s*$')
     start_end_reg = re.compile(r'^(\d\d:\d\d:\d\d[,.]\d\d\d) --> (\d\d:\d\d:\d\d[,.]\d\d\d)\s*$')
-    subs: List[Subline] = []
+    subs: Subtitles = []
 
     lines = Path(srtfile).read_text().splitlines()
     line_number = 0
@@ -49,12 +67,17 @@ def parse_srt(srtfile: str) -> List[Subline]:
     return subs
 
 
-def shift(subs: List[Subline], diff: datetime.timedelta) -> List[Subline]:
+def shift(subs: Subtitles, diff: datetime.timedelta) -> Subtitles:
     newsubs = []
     for sub in subs:
         newsubs.append(Subline(sub.start + diff, sub.end + diff, sub.text))
     return newsubs
 
+
+def output_srt(subs: Subtitles, srtfile: str) -> None:
+    with open(srtfile, 'w') as outfile:
+        for sub_num, sub in enumerate(subs, start=1):
+            print(sub_num, sub, '', sep='\n', file=outfile)
 
 
 ## tests
@@ -83,3 +106,16 @@ def test_shift():
         assert ns.text == s.text
         assert ns.start == s.start + diff
         assert ns.end == s.end + diff
+
+def test_output():
+    subs = parse_srt('test.srt')
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        outfile = Path(tmpdir) / 'test_output.srt'
+
+        output_srt(subs, str(outfile))
+        assert Path(outfile).exists()
+
+        new_subs = parse_srt(str(outfile))
+        assert new_subs == subs
