@@ -2,7 +2,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import tempfile
-from subtitles import parse_srt, output_srt, shift, shift_subline
+from subtitles import parse_srt, output_srt, shift, shift_subline, Subline
 
 
 def test_parse():
@@ -30,6 +30,14 @@ def test_shift():
         assert ns.text == s.text
         assert ns.start == s.start + diff
         assert ns.end == s.end + diff
+
+
+def test_shift_subline():
+    subs = parse_srt('test.srt')
+    new_time = timedelta(seconds=3)
+    new_subs = shift_subline(subs, 5, new_time)
+    assert new_subs[4].start == new_time
+    assert new_subs[4].end == timedelta(seconds=4, microseconds=722000)
 
 
 def test_output():
