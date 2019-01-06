@@ -18,9 +18,11 @@ class Subline(namedtuple('Subline', ['start', 'end', 'text'])):
         return '{} --> {}'.format(self.format_datetime_time(self.start),
                                   self.format_datetime_time(self.end))
 
+    def has_nonnegative_start(self):
+        return self.start >= datetime.timedelta(0)
+
     def __str__(self):
         timeline = self.format_time()
-        # textblock = '\n'.join(self.text)
         return '\n'.join((timeline, *self.text))
 
 Subtitles = List[Subline]
@@ -75,9 +77,17 @@ def shift(subs: Subtitles, diff: datetime.timedelta) -> Subtitles:
 
 
 def output_srt(subs: Subtitles, srtfile: str) -> None:
+    sub_num = 1
     with open(srtfile, 'w') as outfile:
-        for sub_num, sub in enumerate(subs, start=1):
-            print(sub_num, sub, '', sep='\n', file=outfile)
+
+        for sub in subs:
+            if sub.has_nonnegative_start():
+
+                if sub_num > 1:
+                    print('', file=outfile)
+
+                print(sub_num, sub, sep='\n', file=outfile)
+                sub_num += 1
 
 
 ## tests
@@ -107,6 +117,7 @@ def test_shift():
         assert ns.start == s.start + diff
         assert ns.end == s.end + diff
 
+
 def test_output():
     subs = parse_srt('test.srt')
 
@@ -119,3 +130,17 @@ def test_output():
 
         new_subs = parse_srt(str(outfile))
         assert new_subs == subs
+
+
+def test_output_with_negative_times():
+    subs = parse_srt('test.srt')
+    shifted_subs = shift(subs, datetime.timedelta(seconds=-20))
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        outfile = Path(tmpdir) / 'test_negative_time.srt'
+
+        output_srt(shifted_subs, str(outfile))
+        read_subs = parse_srt(str(outfile))
+
+        assert len(read_subs) == len(shifted_subs) - 1
