@@ -2,6 +2,7 @@ import re
 import datetime
 from pathlib import Path
 from collections import namedtuple
+from argparse import ArgumentParser
 
 from typing import List
 
@@ -100,3 +101,38 @@ def output_srt(subs: Subtitles, srtfile: str) -> None:
 
                 print(sub_num, sub, sep='\n', file=outfile)
                 sub_num += 1
+
+
+def cli_parse():
+    parser = ArgumentParser()
+    parser.add_argument('-n', '--line', type=int, required=True,
+                        help='number of subtitle to set time to')
+    parser.add_argument('-t', '--time', required=True,
+                        help='time to shift it to. Format: hh:mm:ss.mmm')
+    parser.add_argument('srtfile', help='srt file with subtitles')
+    parser.add_argument('output_file', help='file to dump subtitles to')
+    args = parser.parse_args()
+    return args
+
+
+def main(args):
+    subs = parse_srt(args.srtfile)
+
+    try:
+        time_m = re.search(r'(\d\d):(\d\d):(\d\d)[.,](\d\d\d)', args.time)
+        hours, mins, secs, millisecs = (int(g) for g in time_m.groups())
+    except:
+        print('bad time format. Run with --help')
+        import sys
+        sys.exit(1)
+
+    time_to = datetime.timedelta(hours=hours, minutes=mins, seconds=secs,
+                                 microseconds=1000 * millisecs)
+
+    new_subs = shift_subline(subs, args.line, time_to)
+    output_srt(new_subs, args.output_file)
+
+
+if __name__ == '__main__':
+    args = cli_parse()
+    main(args)
