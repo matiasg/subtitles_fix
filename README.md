@@ -7,7 +7,7 @@ So far it only shifts subtitles. Example:
 
 ➜ head -n2 test_output.srt 
 1
-01:23:08.868 --> 01:23:14.942
+01:23:08,868 --> 01:23:14,942
 
 ➜ head -n2 test.srt 
 1
@@ -15,5 +15,5 @@ So far it only shifts subtitles. Example:
 
 ➜ grep -A1 '^4$' test_output.srt 
 4
-01:23:45.678 --> 01:23:48.014
+01:23:45,678 --> 01:23:48,014
 ```
