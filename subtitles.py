@@ -14,7 +14,7 @@ class Subline(namedtuple('Subline', ['start', 'end', 'text'])):
         as_date = datetime.datetime(1, 1, 1) + t
         as_time = as_date.time()
         return (f'{as_time.hour:02d}:{as_time.minute:02d}:{as_time.second:02d}'
-                f'.{as_time.microsecond // 1000:03d}')
+                f',{as_time.microsecond // 1000:03d}')
 
     def format_time(self):
         return '{} --> {}'.format(self.format_datetime_time(self.start),
